@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Access Request Assistant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0F2340;
+    --navy-deep:#0A1A30;
+    --gold:#C9A227;
+    --gold-light:#E4C766;
+    --cream:#F6F1E4;
+    --cream-dim:#EAE2CC;
+    --slate:#5C6B82;
+    --ok:#4C7A5C;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--cream-dim);
+    color:var(--navy-deep);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  }
+
+  .shell{
+    width:100%;
+    height:100vh;
+    max-width:1100px;
+    max-height:880px;
+    display:flex;
+    background:#fff;
+    box-shadow:0 20px 50px -20px rgba(15,35,64,0.35);
+  }
+  @media (min-width:900px){
+    body{padding:24px;}
+    .shell{height:832px; border-radius:18px; overflow:hidden;}
+  }
+
+  /* ================= CHAT PANEL ================= */
+  .chat-panel{
+    flex:1 1 56%;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    border-right:1px solid var(--cream-dim);
+  }
+
+  .chat-header{
+    background:var(--navy);
+    color:var(--cream);
+    padding:16px 20px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-shrink:0;
+    position:relative;
+    overflow:hidden;
+  }
+  .chat-header::before{
+    content:"";
+    position:absolute; top:-30px; right:-30px;
+    width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle, rgba(201,162,39,0.3), transparent 70%);
+  }
+  .avatar{
+    width:38px;height:38px;border-radius:50%;
+    background:var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    color:var(--navy-deep);
+    font-size:16px;
+    flex-shrink:0;
+  }
+  .header-text{position:relative; z-index:1; flex:1;}
+  .header-text .name{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:16px;
+    line-height:1.2;
+  }
+  .header-text .status{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--gold-light);
+    display:flex;align-items:center;gap:6px;
+    margin-top:2px;
+  }
+  .header-text .status::before{
+    content:"";width:6px;height:6px;border-radius:50%;
+    background:#5FD186; display:inline-block;
+  }
+  .doc-toggle{
+    display:none;
+    position:relative; z-index:1;
+    background:rgba(246,241,228,0.12);
+    border:1px solid rgba(246,241,228,0.25);
+    color:var(--cream);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:11.5px;
+    font-weight:600;
+    padding:7px 12px;
+    border-radius:999px;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  @media (max-width:899px){
+    .doc-toggle{display:inline-block;}
+  }
+
+  .messages{
+    flex:1;
+    overflow-y:auto;
+    padding:18px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(201,162,39,0.05), transparent 40%),
+      var(--cream);
+  }
+  .row{display:flex; gap:8px; max-width:100%;}
+  .row.bot{justify-content:flex-start;}
+  .row.user{justify-content:flex-end;}
+
+  .bubble{
+    max-width:82%;
+    padding:11px 14px;
+    border-radius:14px;
+    font-size:14px;
+    line-height:1.5;
+    animation:pop .18s ease;
+  }
+  @keyframes pop{from{opacity:0; transform:translateY(4px) scale(0.98);} to{opacity:1; transform:translateY(0) scale(1);}}
+  .row.bot .bubble{
+    background:#fff;
+    border:1px solid var(--cream-dim);
+    color:var(--navy-deep);
+    border-bottom-left-radius:4px;
+  }
+  .row.user .bubble{
+    background:var(--navy);
+    color:var(--cream);
+    border-bottom-right-radius:4px;
+  }
+
+  .bot-avatar-sm{
+    width:26px;height:26px;border-radius:50%;
+    background:var(--gold);
+    flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces', serif; font-weight:700; font-size:11px; color:var(--navy-deep);
+    margin-top:2px;
+  }
+
+  .typing .bubble{display:flex; gap:4px; align-items:center; padding:13px 16px;}
+  .typing .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--slate);
+    animation:bounce 1.1s infinite ease-in-out;
+  }
+  .typing .dot:nth-child(2){animation-delay:.15s;}
+  .typing .dot:nth-child(3){animation-delay:.3s;}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0); opacity:.5;} 30%{transform:translateY(-4px); opacity:1;}}
+
+  .answer-card{margin-top:2px;}
+  .answer-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:14.5px;
+    color:var(--navy);
+    margin:0 0 8px;
+  }
+  .field-row{
+    display:grid;
+    grid-template-columns:100px 1fr auto;
+    align-items:center;
+    gap:8px;
+    background:var(--cream);
+    border:1px solid var(--cream-dim);
+    border-radius:8px;
+    padding:8px 10px;
+    margin-bottom:6px;
+  }
+  .field-row:last-child{margin-bottom:0;}
+  .field-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9.5px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--slate);
+  }
+  .field-value{font-size:12.5px; color:var(--navy-deep); word-break:break-word;}
+  .field-value.justification{font-weight:600;}
+  .copy-btn{
+    flex-shrink:0;
+    background:var(--gold);
+    color:var(--navy-deep);
+    border:none;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:10.5px;
+    padding:4px 8px;
+    border-radius:6px;
+    cursor:pointer;
+    transition:background .12s ease;
+  }
+  .copy-btn:hover{background:var(--gold-light);}
+
+  .step-num{
+    display:inline-flex;
+    align-items:center;justify-content:center;
+    width:18px;height:18px;
+    border-radius:50%;
+    background:var(--navy);
+    color:var(--gold-light);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    margin-right:6px;
+    flex-shrink:0;
+  }
+
+  .quick-replies{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    padding:2px 16px 14px 42px;
+  }
+  .chip{
+    background:#fff;
+    border:1.5px solid var(--gold);
+    color:var(--navy-deep);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:500;
+    font-size:12.5px;
+    padding:7px 13px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:background .12s ease, color .12s ease, transform .1s ease;
+  }
+  .chip:hover{background:var(--gold);}
+  .chip:active{transform:scale(0.96);}
+  .chip.secondary{border-color:var(--cream-dim);}
+  .chip.secondary:hover{background:var(--cream-dim);}
+
+  .input-bar{
+    flex-shrink:0;
+    border-top:1px solid var(--cream-dim);
+    padding:10px 14px;
+    display:flex;
+    gap:8px;
+    background:#fff;
+  }
+  .input-bar input{
+    flex:1;
+    border:1px solid var(--cream-dim);
+    border-radius:999px;
+    padding:10px 16px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px;
+    color:var(--navy-deep);
+    background:var(--cream);
+  }
+  .input-bar input:focus{outline:2px solid var(--gold-light); border-color:var(--gold);}
+  .input-bar button{
+    background:var(--navy);
+    color:var(--gold-light);
+    border:none;
+    border-radius:999px;
+    padding:0 18px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+    transition:background .12s ease;
+  }
+  .input-bar button:hover{background:#16305A;}
+
+  .messages::-webkit-scrollbar{width:6px;}
+  .messages::-webkit-scrollbar-thumb{background:var(--cream-dim); border-radius:4px;}
+
+  /* ================= DOCUMENT PANEL ================= */
+  .doc-panel{
+    flex:1 1 44%;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    background:var(--cream);
+  }
+  @media (max-width:899px){
+    .doc-panel{
+      position:fixed;
+      inset:0;
+      z-index:50;
+      transform:translateX(100%);
+      transition:transform .25s ease;
+      max-width:100%;
+    }
+    .doc-panel.open{transform:translateX(0);}
+  }
+
+  .doc-header{
+    background:var(--navy-deep);
+    color:var(--cream);
+    padding:14px 20px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .doc-header .doc-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--gold-light);
+  }
+  .doc-close{
+    display:none;
+    background:none;
+    border:none;
+    color:var(--cream);
+    font-size:20px;
+    line-height:1;
+    cursor:pointer;
+  }
+  @media (max-width:899px){ .doc-close{display:block;} }
+
+  .doc-scroll{
+    flex:1;
+    overflow-y:auto;
+    padding:22px 22px 60px;
+  }
+  .doc-scroll::-webkit-scrollbar{width:7px;}
+  .doc-scroll::-webkit-scrollbar-thumb{background:var(--cream-dim); border-radius:4px;}
+
+  .doc-cover{
+    background:var(--navy);
+    color:var(--cream);
+    border-radius:12px;
+    padding:20px 20px;
+    margin-bottom:22px;
+    position:relative;
+    overflow:hidden;
+  }
+  .doc-cover::before{
+    content:"";
+    position:absolute; top:-30px; right:-30px;
+    width:130px;height:130px;border-radius:50%;
+    background:radial-gradient(circle, rgba(201,162,39,0.28), transparent 70%);
+  }
+  .doc-eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--gold-light);
+    position:relative; z-index:1;
+  }
+  .doc-cover h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:19px;
+    margin:8px 0 6px;
+    position:relative; z-index:1;
+  }
+  .doc-cover p{
+    margin:0;
+    font-size:12.5px;
+    color:var(--cream-dim);
+    line-height:1.5;
+    position:relative; z-index:1;
+  }
+
+  .doc-section-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:16px;
+    color:var(--navy);
+    margin:0 0 4px;
+    padding-left:12px;
+    border-left:4px solid var(--gold);
+  }
+  .doc-section-note{
+    font-size:12px;
+    color:var(--slate);
+    font-style:italic;
+    padding-left:12px;
+    margin:2px 0 12px;
+  }
+
+  .doc-steps{
+    list-style:none;
+    margin:0 0 26px;
+    padding:0;
+    counter-reset:docstep;
+  }
+  .doc-steps li{
+    counter-increment:docstep;
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    font-size:13px;
+    color:var(--navy-deep);
+    line-height:1.5;
+    margin-bottom:9px;
+  }
+  .doc-steps li::before{
+    content:counter(docstep);
+    flex-shrink:0;
+    width:20px;height:20px;
+    border-radius:50%;
+    background:var(--navy);
+    color:var(--gold-light);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  .doc-app{
+    background:#fff;
+    border:1px solid var(--cream-dim);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    transition:border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+  .doc-app.highlight{
+    border-color:var(--gold);
+    box-shadow:0 0 0 3px rgba(201,162,39,0.18);
+    background:#FFFDF6;
+  }
+  .doc-app-name{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:14.5px;
+    color:var(--navy);
+    margin:0 0 8px;
+  }
+  .doc-field{
+    display:grid;
+    grid-template-columns:104px 1fr;
+    gap:8px;
+    font-size:12.5px;
+    margin-bottom:5px;
+    line-height:1.45;
+  }
+  .doc-field:last-child{margin-bottom:0;}
+  .doc-field-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9.5px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--slate);
+    padding-top:1px;
+  }
+  .doc-field-value{color:var(--navy-deep);}
+  .doc-field-value.justification{font-weight:600;}
+
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ============ CHAT PANEL ============ -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="avatar">A</div>
+      <div class="header-text">
+        <div class="name">Access Assistant</div>
+        <div class="status">Ready to help · secure.uhc.com</div>
+      </div>
+      <button class="doc-toggle" id="docToggleOpen">View document</button>
+    </div>
+
+    <div class="messages" id="messages"></div>
+    <div class="quick-replies" id="quickReplies"></div>
+
+    <div class="input-bar">
+      <input type="text" id="userInput" placeholder="Type an application name…" autocomplete="off">
+      <button id="sendBtn">Ask</button>
+    </div>
+  </div>
+
+  <!-- ============ DOCUMENT PANEL ============ -->
+  <div class="doc-panel" id="docPanel">
+    <div class="doc-header">
+      <span class="doc-title">Reference · Access_Request_Instructions.docx</span>
+      <button class="doc-close" id="docClose">&times;</button>
+    </div>
+    <div class="doc-scroll" id="docScroll">
+      <div class="doc-cover">
+        <div class="doc-eyebrow">Simplified Access Request Instructions</div>
+        <h1>Requesting System Access via secure.uhc.com</h1>
+        <p>A field-by-field reference for the applications OGA Prior Authorization staff request most often — search term, required role(s), and the justification to enter for each.</p>
+      </div>
+
+      <div class="doc-section-title">Standard Steps</div>
+      <div class="doc-section-note">Follow these first, then look up the application below.</div>
+      <ol class="doc-steps" id="docSteps"></ol>
+
+      <div class="doc-section-title">Applications</div>
+      <div class="doc-section-note">Scroll to browse, or ask the assistant to jump straight to one.</div>
+      <div id="docApps"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const apps = [
+    { name: "Rx Imaging (FileNet)", search: "Rx Imaging (FileNet) (prod)", roleLabel: "Role", roles: "Pas Image Viewer", justification: "Prior Authorization, to view attachment" },
+    { name: "Rx Imaging (InputAccel Citrix)", search: "RX Imaging (InputAccel Citrix) (prod)", roleLabel: "Roles", roles: "Citrix Captiva PAS Pharmacy, HDP_Pharmacy, PAS Specialty, HDP_Specialty", justification: "Prior Authorization, to view attachment" },
+    { name: "Rx Imaging (InputAccel)", search: "Rx Imaging (InputAccel) (prod)", roleLabel: "Role", roles: "IAIndexPlus_Group", justification: "Prior Authorization, to view attachment" },
+    { name: "Rx Imaging (xCP)", search: "Rx Imaging (xCP) (prod)", roleLabel: "Role", roles: "All xCP User Access → Pharmacy xCP Users", justification: "Prior Authorization, to view attachment" },
+    { name: "EnterpriseNow / Job Aid", search: "KnowledgeNow on EnterpriseNow (prod)", roleLabel: "Role", roles: "Agent_ORx - PA", justification: "Prior Authorization, to view attachment" },
+    { name: "Advocate Central", search: "OptumRx Navigator Agent Desktop (prod)", roleLabel: "Role", roles: "PA Technician Offshore", justification: "Prior Authorization, to view attachment" },
+    { name: "NICE Engage Call Recording", search: "NICE Engage Call Recording (optum) (prod)", roleLabel: "Role", roles: "agent", extra: "OMNI node, OMNI extension, No mock calls, No CC handling", justification: "Access to call recordings" },
+    { name: "PANDA", search: "Prior Authorization System (PAS) (prod)", roleLabel: "Role", roles: "PAS_PRD_UI_Technician", justification: "Process PA via PANDA" },
+    { name: "PAS", search: "Prior Authorization System (PAS) (prod)", roleLabel: "Role", roles: "PAS_PRD_RESTRICTED_PATECH", justification: "Process PA via PAS" },
+    { name: "NICE IEX WFM Agent", search: "NICE IEX WFM Agent (Optum) (prod)", roleLabel: "Role", roles: "IEX Agent", justification: "Access to IEX" },
+    { name: "NICE IEX WFM Supervisor", search: "IEX Workforce Management (Orange Optum) (prod)", roleLabel: "Roles", roles: "Supervisor Role, Entities-CSBO-ORX-PA Cebu, Menus-Operation", justification: "IEX Supervisor Access" },
+    { name: "Nexidia (AZU_OptumNexidia)", search: "AZU_OptumNexidia", roleLabel: "Platform", roles: "Windows, MS", justification: "Review technician quality & call audits" },
+  ];
+
+  const standardSteps = [
+    "Go to secure.uhc.com",
+    "Select 'Other Access' → 'Request New Access'",
+    "Enter the 9-digit employee ID, then click Search",
+    "Select Application",
+    "Search for and select the application you need",
+    "In the User ID tab: if no ID appears, Create new user ID — otherwise select the existing MSID",
+    "Select the required role(s) for the application",
+    "Add the provided business justification",
+  ];
+
+  // ---------- Build the static document panel ----------
+  const docStepsEl = document.getElementById('docSteps');
+  standardSteps.forEach(s => {
+    const li = document.createElement('li');
+    li.textContent = s;
+    docStepsEl.appendChild(li);
+  });
+
+  const docAppsEl = document.getElementById('docApps');
+  apps.forEach((app, idx) => {
+    const card = document.createElement('div');
+    card.className = 'doc-app';
+    card.id = 'doc-app-' + idx;
+    let fields = `
+      <div class="doc-field"><div class="doc-field-label">Search</div><div class="doc-field-value">${app.search}</div></div>
+      <div class="doc-field"><div class="doc-field-label">${app.roleLabel}</div><div class="doc-field-value">${app.roles}</div></div>
+    `;
+    if (app.extra) {
+      fields += `<div class="doc-field"><div class="doc-field-label">Required answers</div><div class="doc-field-value">${app.extra}</div></div>`;
+    }
+    fields += `<div class="doc-field"><div class="doc-field-label">Justification</div><div class="doc-field-value justification">${app.justification}</div></div>`;
+    card.innerHTML = `<p class="doc-app-name">${app.name}</p>${fields}`;
+    docAppsEl.appendChild(card);
+  });
+
+  function highlightDocApp(idx) {
+    document.querySelectorAll('.doc-app.highlight').forEach(el => el.classList.remove('highlight'));
+    const card = document.getElementById('doc-app-' + idx);
+    if (card) {
+      card.classList.add('highlight');
+      card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+
+  // ---------- Mobile document toggle ----------
+  const docPanel = document.getElementById('docPanel');
+  document.getElementById('docToggleOpen').addEventListener('click', () => docPanel.classList.add('open'));
+  document.getElementById('docClose').addEventListener('click', () => docPanel.classList.remove('open'));
+
+  // ---------- Chat logic ----------
+  const messagesEl = document.getElementById('messages');
+  const quickRepliesEl = document.getElementById('quickReplies');
+  const userInput = document.getElementById('userInput');
+  const sendBtn = document.getElementById('sendBtn');
+
+  let stepsShown = false;
+
+  function scrollDown() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+
+  function addUserBubble(text) {
+    const row = document.createElement('div');
+    row.className = 'row user';
+    row.innerHTML = `<div class="bubble">${text}</div>`;
+    messagesEl.appendChild(row);
+    scrollDown();
+  }
+
+  function showTyping() {
+    const row = document.createElement('div');
+    row.className = 'row bot typing';
+    row.id = 'typingRow';
+    row.innerHTML = `<div class="bot-avatar-sm">A</div><div class="bubble"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
+    messagesEl.appendChild(row);
+    scrollDown();
+  }
+
+  function hideTyping() {
+    const row = document.getElementById('typingRow');
+    if (row) row.remove();
+  }
+
+  function addBotBubble(html, delay = 550) {
+    return new Promise((resolve) => {
+      showTyping();
+      setTimeout(() => {
+        hideTyping();
+        const row = document.createElement('div');
+        row.className = 'row bot';
+        row.innerHTML = `<div class="bot-avatar-sm">A</div><div class="bubble">${html}</div>`;
+        messagesEl.appendChild(row);
+        scrollDown();
+        resolve();
+      }, delay);
+    });
+  }
+
+  function setQuickReplies(items) {
+    quickRepliesEl.innerHTML = '';
+    items.forEach(({ label, action, secondary }) => {
+      const chip = document.createElement('button');
+      chip.className = 'chip' + (secondary ? ' secondary' : '');
+      chip.textContent = label;
+      chip.addEventListener('click', action);
+      quickRepliesEl.appendChild(chip);
+    });
+  }
+
+  function clearQuickReplies() { quickRepliesEl.innerHTML = ''; }
+
+  function fieldRow(label, value) {
+    return `
+      <div class="field-row">
+        <div class="field-label">${label}</div>
+        <div class="field-value${label === 'Justification' ? ' justification' : ''}">${value}</div>
+        <button class="copy-btn copy-field" data-copy="${value.replace(/"/g,'&quot;')}">Copy</button>
+      </div>
+    `;
+  }
+
+  function answerForApp(app) {
+    let fields = fieldRow('Search', app.search);
+    fields += fieldRow(app.roleLabel, app.roles);
+    if (app.extra) fields += fieldRow('Required answers', app.extra);
+    fields += fieldRow('Justification', app.justification);
+    return `<div class="answer-card"><p class="answer-title">${app.name}</p>${fields}</div>`;
+  }
+
+  async function startConversation() {
+    await addBotBubble("Hi! I'm the Access Assistant for secure.uhc.com.", 400);
+    await addBotBubble("Which application do you need access to? Pick one below, type its name, or ask me \u201chow does this work\u201d if you want the steps first. The full reference doc is open alongside this chat.", 500);
+    offerAppChoices();
+  }
+
+  function offerAppChoices() {
+    const items = apps.map((app, idx) => ({
+      label: app.name,
+      action: () => handleAppChoice(app, idx),
+    }));
+    items.push({ label: "How does this work?", secondary: true, action: handleHowTo });
+    setQuickReplies(items);
+  }
+
+  async function showStandardSteps() {
+    if (stepsShown) return;
+    stepsShown = true;
+    await addBotBubble("These steps apply to every request, before you get to the role and justification:");
+    await addBotBubble(standardSteps.slice(0, 4).map((s, i) => `<span class="step-num">${i+1}</span>${s}<br>`).join(''), 500);
+  }
+
+  async function handleHowTo() {
+    clearQuickReplies();
+    addUserBubble("How does this work?");
+    if (stepsShown) {
+      await addBotBubble("Same as before \u2014 here are the standard steps again:", 400);
+      await addBotBubble(standardSteps.slice(0, 4).map((s, i) => `<span class="step-num">${i+1}</span>${s}<br>`).join(''), 500);
+    } else {
+      await showStandardSteps();
+    }
+    await addBotBubble(`<span class="step-num">5</span>Then search for and select the application you need \u2014 which one is it?`, 500);
+    offerAppChoices();
+  }
+
+  async function handleAppChoice(app, idx) {
+    clearQuickReplies();
+    addUserBubble(app.name);
+    highlightDocApp(idx);
+    if (!stepsShown) {
+      await showStandardSteps();
+    }
+    await addBotBubble(`<span class="step-num">5</span>Search for and select <strong>${app.name}</strong>. Here's what to enter next:`, 450);
+    await addBotBubble(answerForApp(app), 500);
+    await addBotBubble(`<span class="step-num">6</span>Select the role(s) shown above.<br><span class="step-num">7</span>Paste the justification into the business justification field.<br><span class="step-num">8</span>Submit the request.`, 550);
+    askAnother();
+  }
+
+  async function askAnother() {
+    await addBotBubble("Need access to another application?", 500);
+    setQuickReplies([
+      { label: "Yes, another one", action: async () => {
+          clearQuickReplies();
+          addUserBubble("Yes, another one");
+          await addBotBubble("Sure — which application?", 400);
+          offerAppChoices();
+        }
+      },
+      { label: "No, that's all", secondary: true, action: async () => {
+          clearQuickReplies();
+          addUserBubble("No, that's all");
+          await addBotBubble("You're all set. Double-check the User ID tab (create new, or select the existing MSID) before you submit. Good luck! \ud83c\udf89", 450);
+        }
+      },
+    ]);
+  }
+
+  function findAppMatch(text) {
+    const q = text.trim().toLowerCase();
+    if (!q) return null;
+    const idx = apps.findIndex(a => a.name.toLowerCase().includes(q));
+    return idx === -1 ? null : idx;
+  }
+
+  function isHowToIntent(text) {
+    const q = text.trim().toLowerCase();
+    return ["how", "guide", "steps", "instructions", "help", "process"].some(k => q.includes(k));
+  }
+
+  async function handleUserTextSubmit() {
+    const text = userInput.value.trim();
+    if (!text) return;
+    userInput.value = '';
+
+    const matchIdx = findAppMatch(text);
+    clearQuickReplies();
+    addUserBubble(text);
+
+    if (matchIdx !== null) {
+      const app = apps[matchIdx];
+      highlightDocApp(matchIdx);
+      if (!stepsShown) {
+        await showStandardSteps();
+      }
+      await addBotBubble(`<span class="step-num">5</span>Search for and select <strong>${app.name}</strong>. Here's what to enter next:`, 450);
+      await addBotBubble(answerForApp(app), 500);
+      await addBotBubble(`<span class="step-num">6</span>Select the role(s) shown above.<br><span class="step-num">7</span>Paste the justification into the business justification field.<br><span class="step-num">8</span>Submit the request.`, 550);
+      askAnother();
+    } else if (isHowToIntent(text)) {
+      if (stepsShown) {
+        await addBotBubble("Same as before \u2014 here are the standard steps again:", 400);
+        await addBotBubble(standardSteps.slice(0, 4).map((s, i) => `<span class="step-num">${i+1}</span>${s}<br>`).join(''), 500);
+      } else {
+        await showStandardSteps();
+      }
+      await addBotBubble(`<span class="step-num">5</span>Then search for and select the application you need \u2014 which one is it?`, 500);
+      offerAppChoices();
+    } else {
+      await addBotBubble(`I couldn't find an application matching "${text}". Here's the full list:`, 450);
+      offerAppChoices();
+    }
+  }
+
+  sendBtn.addEventListener('click', handleUserTextSubmit);
+  userInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleUserTextSubmit(); });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('copy-field')) {
+      const val = e.target.getAttribute('data-copy');
+      navigator.clipboard.writeText(val);
+      const old = e.target.textContent;
+      e.target.textContent = 'Copied';
+      setTimeout(() => e.target.textContent = old, 1200);
+    }
+  });
+
+  startConversation();
+</script>
+</body>
+</html>
