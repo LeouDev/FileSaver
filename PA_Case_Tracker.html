@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PA Case Tracker</title>
+<style>
+  :root{
+    --navy:#3a2420; --primary:#b54b35; --primary-dark:#8f3a29; --primary-light:#f5e6e1;
+    --green:#34c759; --red:#ff3b30; --orange:#ff9500;
+    --bg:#efece4; --card:#ffffff; --border:#e5e2e0; --text:#2c2321; --muted:#8a7d78;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased;position:relative;}
+  .bg-grid{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;}
+  .bg-grid::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:55%;
+    background-image:
+      linear-gradient(rgba(60,45,35,.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(60,45,35,.07) 1px, transparent 1px);
+    background-size:34px 34px;
+    -webkit-mask-image:linear-gradient(to bottom, black 55%, transparent 100%);
+    mask-image:linear-gradient(to bottom, black 55%, transparent 100%);
+  }
+  .bg-grid::after{
+    content:"";position:absolute;left:-60%;right:-60%;bottom:0;height:75%;
+    background-image:
+      linear-gradient(rgba(60,45,35,.09) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(60,45,35,.09) 1px, transparent 1px);
+    background-size:34px 34px;
+    transform:perspective(220px) rotateX(62deg);
+    transform-origin:bottom center;
+  }
+  header{position:sticky;top:0;z-index:40;background:rgba(181,75,53,.94);backdrop-filter:saturate(180%) blur(16px);-webkit-backdrop-filter:saturate(180%) blur(16px);color:#fff;padding:16px 24px;}
+  header h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em;}
+  header p{margin:3px 0 0;font-size:11.5px;color:rgba(255,255,255,.82);}
+  .wrap{max-width:1320px;margin:0 auto;padding:20px 18px 60px;}
+  .layout{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start;}
+  @media(max-width:960px){.layout{grid-template-columns:1fr;}.sidebar{position:static !important;}}
+  .sidebar{position:sticky;top:78px;display:flex;flex-direction:column;gap:18px;}
+  .goal-card h2{margin-bottom:4px;}
+  .goal-rate{font-size:12px;color:var(--muted);margin-bottom:14px;}
+  .goal-rate b{color:var(--primary);font-size:15px;}
+  .goal-stat{margin-bottom:12px;}
+  .goal-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;}
+  .goal-stat-value{font-size:20px;font-weight:700;color:var(--navy);}
+  .progress-wrap{margin:14px 0;}
+  .progress-track{width:100%;height:12px;background:#e9e6e4;border-radius:8px;overflow:hidden;}
+  .progress-fill{height:100%;width:0%;border-radius:8px;transition:width .3s ease, background .3s ease;background:var(--red);}
+  .progress-fill.low{background:var(--red);}
+  .progress-fill.mid{background:var(--orange);}
+  .progress-fill.good{background:var(--green);}
+  .progress-label{font-size:11px;color:var(--muted);margin-top:6px;text-align:center;}
+  .goal-status{font-size:12px;margin-top:10px;padding:9px 11px;border-radius:10px;background:#f2f2f7;color:var(--text);}
+  .goal-status.good{background:#e6f9ec;color:#1f7a3d;}
+  .goal-status.warn{background:#fff2e0;color:#8a5a00;}
+  .banner{background:#fff2e0;border:1px solid #f5d9a8;color:#8a5a00;padding:10px 14px;border-radius:12px;font-size:12px;margin-bottom:18px;}
+  .grid{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:18px;}
+  .table-wrap{overflow-x:auto;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;box-shadow:0 1px 2px rgba(60,40,30,.04), 0 8px 20px rgba(60,40,30,.045);}
+  .card h2{font-size:13.5px;margin:0 0 12px;color:var(--navy);font-weight:600;}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+  label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px;}
+  input,select{padding:7px 10px;border:1px solid var(--border);border-radius:9px;font-size:12.5px;background:#fff;font-family:inherit;}
+  input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light);}
+  .btn{border:none;border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:600;cursor:pointer;color:#fff;background:var(--primary);transition:transform .1s ease, opacity .15s ease;}
+  .btn:hover{opacity:.92;}
+  .btn:active{transform:scale(.96);}
+  .btn.secondary{background:#fff;color:var(--primary);border:1px solid var(--primary);}
+  .btn.small{padding:4px 10px;font-size:11px;}
+  .btn.danger{background:var(--red);}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th,td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);}
+  th{color:var(--muted);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:12px;font-size:10px;font-weight:600;color:#fff;}
+  .badge.pend{background:var(--orange);}
+  .badge.deny{background:var(--red);}
+  .badge.approved{background:var(--green);}
+  .flag-yes{color:var(--red);font-weight:700;}
+  .flag-no{color:var(--muted);}
+  .excluded{color:var(--muted);font-style:italic;}
+  .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+  .metric{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;text-align:center;box-shadow:0 1px 2px rgba(60,40,30,.04), 0 8px 20px rgba(60,40,30,.045);}
+  .metric .num{font-size:22px;font-weight:700;color:var(--navy);}
+  .metric .lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(30,20,18,.45);align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(2px);}
+  .modal-bg.open{display:flex;}
+  .modal{background:#fff;border-radius:20px;padding:24px 26px;width:680px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(30,20,18,.28);}
+  .modal h3{margin:0 0 16px;font-size:16px;color:var(--navy);}
+  .modal label{margin-top:10px;}
+  .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;}
+  @media(max-width:620px){.modal-grid{grid-template-columns:1fr;}.modal{width:94vw;}}
+  .modal-col h4{margin:0 0 10px;font-size:11px;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);padding-bottom:8px;}
+  .modal-col + .modal-col{border-left:1px solid var(--border);padding-left:28px;}
+  @media(max-width:620px){.modal-col + .modal-col{border-left:none;padding-left:0;margin-top:16px;}}
+  .required-mark{color:var(--red);}
+  .switch-field{margin-top:15px;}
+  .switch-field label{margin-bottom:0;}
+  .switch-row{display:flex;align-items:center;gap:10px;margin-top:6px;}
+  .switch{position:relative;width:44px;height:26px;background:#e5e2e0;border-radius:13px;cursor:pointer;transition:background .2s;flex-shrink:0;}
+  .switch .knob{position:absolute;top:2px;left:2px;width:22px;height:22px;background:#fff;border-radius:50%;transition:left .2s cubic-bezier(.3,1.2,.6,1);box-shadow:0 1px 3px rgba(0,0,0,.25);}
+  .switch.yes{background:var(--green);}
+  .switch.yes .knob{left:20px;}
+  .switch.no{background:var(--red);}
+  .switch-label{font-size:12px;color:var(--muted);}
+  .modal-error{display:none;background:#fdeaea;color:#a52424;border:1px solid #f3b7b7;padding:9px 12px;border-radius:12px;font-size:11.5px;margin-top:16px;}
+  .modal-success{display:none;background:#e6f9ec;color:#1f7a3d;border:1px solid #b9e8c8;padding:9px 12px;border-radius:12px;font-size:11.5px;margin-top:16px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+  .footer-note{font-size:11px;color:var(--muted);margin-top:6px;}
+  .small-x{background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;}
+  .summary-actions{display:flex;gap:8px;margin-bottom:12px;}
+  .empty{color:var(--muted);font-size:12px;padding:8px 0;}
+  .dropzone{border:1.5px dashed #d8b8ac;border-radius:14px;padding:16px;text-align:center;font-size:12px;color:var(--muted);margin-bottom:12px;transition:background .15s;}
+  .dropzone.drag{background:var(--primary-light);border-color:var(--primary);}
+  .dropzone a{color:var(--primary);text-decoration:underline;cursor:pointer;}
+  .review-note{font-size:11px;color:var(--muted);margin-bottom:6px;}
+  .review-note b{color:var(--text);}
+  .eod-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.4;}
+  .gauge-wrap{position:relative;margin-top:22px;}
+  .gauge-svg{width:100%;height:auto;display:block;}
+  .gauge-track{fill:none;stroke:#e9e6e4;stroke-width:14;stroke-linecap:round;}
+  .gauge-fill{fill:none;stroke:var(--red);stroke-width:14;stroke-linecap:round;transition:stroke-dashoffset .4s ease, stroke .3s ease;}
+  .gauge-fill.mid{stroke:var(--orange);}
+  .gauge-fill.good{stroke:var(--green);}
+  .gauge-center{position:absolute;left:0;right:0;bottom:2px;text-align:center;}
+  .gauge-pct{font-size:26px;font-weight:700;color:var(--navy);}
+  .gauge-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .gauge-caption{font-size:11px;color:var(--muted);text-align:center;margin-top:2px;}
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+
+<header>
+  <h1>PA Case Tracker</h1>
+  <p>Cases logged &divide; production hours &mdash; hours counted only for: CSBO-PA-OGS Fax, PA Fax Only, CSBO-PA-CRG-Part D, CRG - UHC E&amp;I</p>
+</header>
+
+<div class="wrap">
+
+  <div class="banner">
+    SharePoint sync isn't connected yet. Data is saved locally in this browser. Use "Export CSV" below to move data into a SharePoint list once an app registration / Power Automate flow is set up on your end.
+  </div>
+
+  <div class="layout">
+  <div class="main">
+
+  <div class="row" style="justify-content:space-between;">
+    <div>
+      <label>Working date (CST)</label>
+      <input type="date" id="activeDate">
+    </div>
+    <div style="display:flex;gap:10px;align-items:flex-end;">
+      <button class="btn" onclick="openCaseModal()">+ Log Case</button>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="num" id="mCases">0</div><div class="lbl">Cases Logged (day)</div></div>
+    <div class="metric"><div class="num" id="mHours">0.00</div><div class="lbl">Production Hours (day)</div></div>
+    <div class="metric"><div class="num" id="mRatio">&mdash;</div><div class="lbl">Cases per Hour (day)</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Activities &mdash; <span id="dateLabel1"></span></h2>
+
+      <div class="dropzone" id="dropZone">
+        Paste a schedule screenshot (Ctrl/Cmd+V) anywhere on this page, or
+        <a onclick="document.getElementById('imgFile').click()">choose an image file</a>
+        <input type="file" id="imgFile" accept="image/*" style="display:none;">
+        <div style="font-size:11px;margin-top:4px;">Reads the image in your browser (Tesseract.js) &mdash; nothing is uploaded anywhere.</div>
+      </div>
+      <div id="ocrStatus" style="font-size:12px;color:var(--muted);display:none;margin-bottom:10px;">Reading screenshot&hellip;</div>
+
+      <div id="reviewWrap" style="display:none;">
+        <div class="review-note">Showing only rows that matched a qualifying activity (CSBO-PA-OGS Fax, PA Fax Only, CSBO-PA-CRG-Part D, CRG - UHC E&amp;I). Check the name/times before adding. Times are read exactly as shown (CST, no timezone conversion). Rows shaded orange had low OCR confidence &mdash; double-check those especially.</div>
+        <div id="reviewNoneQualifying" class="review-note" style="display:none;color:var(--muted);font-style:italic;">No qualifying activities were detected in this image. Click &ldquo;show all extracted rows&rdquo; below if you want to review everything and add one manually.</div>
+        <table>
+          <thead><tr><th>Activity</th><th>Start</th><th>End</th><th>Count?</th><th></th></tr></thead>
+          <tbody id="reviewRows"></tbody>
+        </table>
+        <a id="reviewToggle" onclick="toggleReviewShowAll()" style="display:none;font-size:11px;color:var(--primary);cursor:pointer;text-decoration:underline;"></a>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" onclick="commitReviewRows()">Add these rows</button>
+          <button class="btn secondary" onclick="cancelReview()">Discard</button>
+        </div>
+      </div>
+
+      <div class="review-note" style="margin-top:4px;">Or add a row manually:</div>
+      <div class="row">
+        <div>
+          <label>Activity</label>
+          <select id="actSelect">
+            <option>CSBO-PA-OGS Fax</option>
+            <option>PA Fax Only</option>
+            <option>CSBO-PA-CRG-Part D</option>
+            <option>CRG - UHC E&I</option>
+            <option value="__other">Other (not counted)</option>
+          </select>
+        </div>
+        <div id="otherNameWrap" style="display:none;">
+          <label>Activity name</label>
+          <input type="text" id="otherName" placeholder="e.g. Break">
+        </div>
+        <div><label>Start</label><input type="time" id="actStart"></div>
+        <div><label>End</label><input type="time" id="actEnd"></div>
+        <div style="align-self:flex-end;"><button class="btn secondary" onclick="addActivity()">+ Add</button></div>
+      </div>
+      <table>
+        <thead><tr><th>Activity</th><th>Start</th><th>End</th><th>Hrs</th><th>Counted</th><th></th></tr></thead>
+        <tbody id="activityRows"></tbody>
+      </table>
+      <div id="activityEmpty" class="empty">No activities logged for this date yet.</div>
+    </div>
+
+    <div class="card">
+      <h2>Cases Logged &mdash; <span id="dateLabel2"></span></h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>PA Case #</th><th>Provider ✓</th><th>Member ✓</th><th>Drug ✓</th><th>Decision</th>
+            <th>Active Appvl</th><th>Cancel Note</th><th>Urgent</th><th>Qty Limit</th><th>Logged</th><th></th>
+          </tr></thead>
+          <tbody id="caseRows"></tbody>
+        </table>
+      </div>
+      <div id="caseEmpty" class="empty">No cases logged for this date yet.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>All-Time Summary (by date)</h2>
+    <div class="summary-actions">
+      <button class="btn secondary" onclick="exportSummaryCSV()">Export Summary CSV</button>
+      <button class="btn secondary" onclick="exportCaseLogCSV()">Export Case Log CSV</button>
+    </div>
+    <table>
+      <thead><tr><th>Date</th><th>Cases</th><th>Pend</th><th>Deny</th><th>Approved</th><th>Prod. Hours</th><th>Cases/Hr</th></tr></thead>
+      <tbody id="summaryRows"></tbody>
+    </table>
+    <div id="summaryEmpty" class="empty">No data yet.</div>
+  </div>
+
+  <p class="footer-note">Data is stored in this browser only (localStorage), keyed to this device/browser. Export CSV regularly to back up or hand off to SharePoint.</p>
+
+  </div>
+
+  <aside class="sidebar">
+    <div class="card goal-card">
+      <h2>Daily Goal</h2>
+      <div class="goal-rate">Goal: <b>11.5</b> cases / hour</div>
+
+      <div class="goal-stat">
+        <div class="goal-stat-label">Production hours today</div>
+        <div class="goal-stat-value" id="goalHours">0.00</div>
+      </div>
+
+      <div class="goal-stat">
+        <div class="goal-stat-label">Target cases today</div>
+        <div class="goal-stat-value" id="goalTarget">&mdash;</div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-label" id="progressLabel">Enter production hours to see today&rsquo;s target</div>
+      </div>
+
+      <div class="goal-stat">
+        <div class="goal-stat-label">Current pace</div>
+        <div class="goal-stat-value" id="goalPace" style="font-size:16px;">&mdash;</div>
+      </div>
+
+      <div id="goalStatus" class="goal-status">Log activities to calculate today&rsquo;s case target.</div>
+    </div>
+
+    <div class="card">
+      <h2>EOD Email</h2>
+      <label>Your Name</label>
+      <input type="text" id="yourName" placeholder="e.g. Leou" style="width:100%;">
+      <label style="margin-top:10px;">TL Name</label>
+      <input type="text" id="tlName" placeholder="Team lead's name" style="width:100%;">
+      <button class="btn" style="width:100%;margin-top:14px;" onclick="sendEODEmail()">Send EOD Email</button>
+      <div class="eod-note">Downloads today&rsquo;s case log CSV, then opens your email app with the EOD report pre-filled. Browsers can&rsquo;t auto-attach files, so attach the downloaded CSV before hitting send.</div>
+    </div>
+  </aside>
+
+  </div>
+</div>
+
+<div class="modal-bg" id="caseModalBg">
+  <div class="modal">
+    <h3>Log a Case</h3>
+    <div class="modal-grid">
+      <div class="modal-col">
+        <h4>Case Info</h4>
+        <label>Date</label>
+        <input type="date" id="modalDate" style="width:100%;">
+        <label>PA Case Number <span class="required-mark">*</span></label>
+        <input type="text" id="modalCaseNum" placeholder="e.g. PA-102938" style="width:100%;">
+        <label>Decision <span class="required-mark">*</span></label>
+        <select id="modalDecision" style="width:100%;">
+          <option value="Pend">Pend</option>
+          <option value="Deny">Deny</option>
+          <option value="Approved">Approved</option>
+        </select>
+
+        <div class="gauge-wrap">
+          <svg viewBox="0 0 200 108" class="gauge-svg">
+            <path class="gauge-track" d="M14,100 A86,86 0 0 1 186,100" pathLength="100"></path>
+            <path class="gauge-fill" id="modalGaugeFill" d="M14,100 A86,86 0 0 1 186,100" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></path>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-pct" id="modalGaugePct">0%</div>
+            <div class="gauge-sub" id="modalGaugeSub">0 / 0 cases</div>
+          </div>
+        </div>
+        <div class="gauge-caption">Today&rsquo;s progress to goal (11.5 cases/hr)</div>
+      </div>
+      <div class="modal-col">
+        <h4>Checklist (required)</h4>
+
+        <div class="switch-field">
+          <label>Provider checked <span class="required-mark">*</span></label>
+          <div class="switch-row">
+            <div class="switch" id="swProvider" onclick="toggleConfirm(this)"><div class="knob"></div></div>
+            <span class="switch-label">Not checked</span>
+          </div>
+        </div>
+
+        <div class="switch-field">
+          <label>Member checked <span class="required-mark">*</span></label>
+          <div class="switch-row">
+            <div class="switch" id="swMember" onclick="toggleConfirm(this)"><div class="knob"></div></div>
+            <span class="switch-label">Not checked</span>
+          </div>
+        </div>
+
+        <div class="switch-field">
+          <label>Drug checked <span class="required-mark">*</span></label>
+          <div class="switch-row">
+            <div class="switch" id="swDrug" onclick="toggleConfirm(this)"><div class="knob"></div></div>
+            <span class="switch-label">Not checked</span>
+          </div>
+        </div>
+
+        <div class="switch-field">
+          <label>Active approval on file? <span class="required-mark">*</span></label>
+          <div class="switch-row">
+            <div class="switch" id="swActiveAppvl" onclick="cycleYN(this)"><div class="knob"></div></div>
+            <span class="switch-label">Not answered</span>
+          </div>
+        </div>
+
+        <div class="switch-field">
+          <label>Note for cancellation? <span class="required-mark">*</span></label>
+          <div class="switch-row">
+            <div class="switch" id="swCancelNote" onclick="cycleYN(this)"><div class="knob"></div></div>
+            <span class="switch-label">Not answered</span>
+          </div>
+        </div>
+
+        <div class="switch-field">
+          <label>Urgent? <span class="required-mark">*</span></label>
+          <div class="switch-row">
+            <div class="switch" id="swUrgent" onclick="cycleYN(this)"><div class="knob"></div></div>
+            <span class="switch-label">Not answered</span>
+          </div>
+        </div>
+
+        <div class="switch-field">
+          <label>Have you checked the Quantity limit? <span class="required-mark">*</span></label>
+          <div class="switch-row">
+            <div class="switch" id="swQtyLimit" onclick="cycleYN(this)"><div class="knob"></div></div>
+            <span class="switch-label">Not answered</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="modalError" class="modal-error"></div>
+    <div id="modalSuccess" class="modal-success"></div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeCaseModal()">Close</button>
+      <button class="btn" onclick="saveCase()">Save &amp; Log Another</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const QUALIFYING = ["CSBO-PA-OGS Fax","PA Fax Only","CSBO-PA-CRG-Part D","CRG - UHC E&I"];
+const STORE_KEY = "paCaseTrackerData";
+const SETTINGS_KEY = "paCaseTrackerSettings";
+const GOAL_RATE = 11.5; // target cases per production hour
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {cases:[], activities:[]};
+}
+function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+
+let data = loadData();
+
+function todayStr(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+
+const dateInput = document.getElementById('activeDate');
+dateInput.value = todayStr();
+dateInput.addEventListener('change', renderAll);
+
+document.getElementById('actSelect').addEventListener('change', function(){
+  document.getElementById('otherNameWrap').style.display = this.value === '__other' ? 'block' : 'none';
+});
+
+function timeToDecimal(start, end){
+  if(!start || !end) return 0;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  let mins = (eh*60+em) - (sh*60+sm);
+  if(mins < 0) mins += 24*60;
+  return mins/60;
+}
+
+function addActivity(){
+  const sel = document.getElementById('actSelect');
+  const start = document.getElementById('actStart').value;
+  const end = document.getElementById('actEnd').value;
+  if(!start || !end){ alert('Enter start and end time.'); return; }
+  let activityName = sel.value;
+  let counted = QUALIFYING.includes(activityName);
+  if(activityName === '__other'){
+    activityName = document.getElementById('otherName').value.trim() || 'Other';
+    counted = false;
+  }
+  const hours = timeToDecimal(start, end);
+  data.activities.push({
+    id: Date.now()+Math.random(),
+    date: dateInput.value,
+    activity: activityName,
+    start, end,
+    hours,
+    counted
+  });
+  saveData();
+  document.getElementById('actStart').value='';
+  document.getElementById('actEnd').value='';
+  document.getElementById('otherName').value='';
+  renderAll();
+}
+
+function deleteActivity(id){
+  data.activities = data.activities.filter(a=>a.id!==id);
+  saveData(); renderAll();
+}
+
+// Confirm-style switch (Provider/Member/Drug): binary — on means "checked".
+function toggleConfirm(el){
+  const isOn = el.classList.contains('yes');
+  const next = !isOn;
+  el.classList.toggle('yes', next);
+  el.setAttribute('data-value', next ? 'Y' : '');
+  const lbl = el.parentElement.querySelector('.switch-label');
+  if(lbl) lbl.textContent = next ? 'Checked' : 'Not checked';
+}
+
+// Yes/No style switch: starts neutral (unanswered); first click always lands
+// on "Yes", further clicks alternate Yes/No. It never goes back to neutral on
+// its own, so a required field can't silently pass by being left untouched.
+function cycleYN(el){
+  const current = el.getAttribute('data-value') || '';
+  const next = current === 'Y' ? 'N' : 'Y';
+  el.setAttribute('data-value', next);
+  el.classList.remove('yes','no');
+  el.classList.add(next === 'Y' ? 'yes' : 'no');
+  const lbl = el.parentElement.querySelector('.switch-label');
+  if(lbl) lbl.textContent = next === 'Y' ? 'Yes' : 'No';
+}
+
+function resetSwitch(id, neutralLabel){
+  const el = document.getElementById(id);
+  el.removeAttribute('data-value');
+  el.classList.remove('yes','no');
+  const lbl = el.parentElement.querySelector('.switch-label');
+  if(lbl) lbl.textContent = neutralLabel;
+}
+
+function resetCaseForm(){
+  document.getElementById('modalDate').value = dateInput.value;
+  document.getElementById('modalCaseNum').value = '';
+  document.getElementById('modalDecision').value = 'Pend';
+  resetSwitch('swProvider', 'Not checked');
+  resetSwitch('swMember', 'Not checked');
+  resetSwitch('swDrug', 'Not checked');
+  resetSwitch('swActiveAppvl', 'Not answered');
+  resetSwitch('swCancelNote', 'Not answered');
+  resetSwitch('swUrgent', 'Not answered');
+  resetSwitch('swQtyLimit', 'Not answered');
+}
+
+function openCaseModal(){
+  resetCaseForm();
+  hideModalError();
+  hideModalSuccess();
+  document.getElementById('caseModalBg').classList.add('open');
+  document.getElementById('modalCaseNum').focus();
+}
+function closeCaseModal(){
+  document.getElementById('caseModalBg').classList.remove('open');
+}
+function showModalError(msg){
+  hideModalSuccess();
+  const err = document.getElementById('modalError');
+  err.textContent = msg;
+  err.style.display = 'block';
+}
+function hideModalError(){
+  const err = document.getElementById('modalError');
+  err.style.display = 'none';
+  err.textContent = '';
+}
+function showModalSuccess(msg){
+  hideModalError();
+  const ok = document.getElementById('modalSuccess');
+  ok.textContent = msg;
+  ok.style.display = 'block';
+}
+function hideModalSuccess(){
+  const ok = document.getElementById('modalSuccess');
+  ok.style.display = 'none';
+  ok.textContent = '';
+}
+function saveCase(){
+  const num = document.getElementById('modalCaseNum').value.trim();
+  const providerChecked = document.getElementById('swProvider').getAttribute('data-value') === 'Y';
+  const memberChecked = document.getElementById('swMember').getAttribute('data-value') === 'Y';
+  const drugChecked = document.getElementById('swDrug').getAttribute('data-value') === 'Y';
+  const activeAppvl = document.getElementById('swActiveAppvl').getAttribute('data-value') || '';
+  const cancelNote = document.getElementById('swCancelNote').getAttribute('data-value') || '';
+  const urgent = document.getElementById('swUrgent').getAttribute('data-value') || '';
+  const qtyLimit = document.getElementById('swQtyLimit').getAttribute('data-value') || '';
+
+  const missing = [];
+  if(!num) missing.push('PA Case Number');
+  if(!providerChecked) missing.push('Provider checked');
+  if(!memberChecked) missing.push('Member checked');
+  if(!drugChecked) missing.push('Drug checked');
+  if(!activeAppvl) missing.push('Active approval on file? (Y/N)');
+  if(!cancelNote) missing.push('Note for cancellation? (Y/N)');
+  if(!urgent) missing.push('Urgent? (Y/N)');
+  if(!qtyLimit) missing.push('Quantity limit checked? (Y/N)');
+
+  if(missing.length){
+    showModalError('Please complete the checklist before saving — missing: ' + missing.join(', ') + '.');
+    return;
+  }
+
+  const date = document.getElementById('modalDate').value || dateInput.value;
+  const decision = document.getElementById('modalDecision').value;
+  data.cases.push({
+    id: Date.now()+Math.random(),
+    date,
+    caseNumber: num,
+    providerChecked: 'Y',
+    memberChecked: 'Y',
+    drugChecked: 'Y',
+    decision,
+    activeAppvl,
+    cancelNote,
+    urgent,
+    qtyLimit,
+    loggedAt: new Date().toLocaleString()
+  });
+  saveData();
+  renderAll();
+
+  // Keep the modal open so the user can log the next case right away —
+  // just reset the fields and confirm the save instead of closing.
+  resetCaseForm();
+  showModalSuccess(`Case ${num} saved. Ready for the next one.`);
+  document.getElementById('modalCaseNum').focus();
+}
+function deleteCase(id){
+  data.cases = data.cases.filter(c=>c.id!==id);
+  saveData(); renderAll();
+}
+
+function decisionBadge(d){
+  const cls = d.toLowerCase()==='pend' ? 'pend' : d.toLowerCase()==='deny' ? 'deny' : 'approved';
+  return `<span class="badge ${cls}">${d}</span>`;
+}
+
+function flagCell(v){
+  return `<span class="${v==='Y' ? 'flag-yes' : 'flag-no'}">${v||''}</span>`;
+}
+
+function fmt(n){ return n.toFixed(2); }
+
+function renderAll(){
+  const date = dateInput.value;
+  document.getElementById('dateLabel1').textContent = date;
+  document.getElementById('dateLabel2').textContent = date;
+
+  const dayActivities = data.activities.filter(a=>a.date===date);
+  const dayCases = data.cases.filter(c=>c.date===date);
+
+  const actBody = document.getElementById('activityRows');
+  actBody.innerHTML = '';
+  dayActivities.forEach(a=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="${a.counted?'':'excluded'}">${a.activity}</td>
+      <td>${a.start}</td><td>${a.end}</td><td>${fmt(a.hours)}</td>
+      <td>${a.counted ? 'Yes' : 'No'}</td>
+      <td><button class="small-x" onclick="deleteActivity(${JSON.stringify(a.id)})">✕</button></td>`;
+    actBody.appendChild(tr);
+  });
+  document.getElementById('activityEmpty').style.display = dayActivities.length ? 'none' : 'block';
+
+  const caseBody = document.getElementById('caseRows');
+  caseBody.innerHTML = '';
+  dayCases.forEach(c=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${c.caseNumber}</td>
+      <td>${flagCell(c.providerChecked)}</td><td>${flagCell(c.memberChecked)}</td><td>${flagCell(c.drugChecked)}</td>
+      <td>${decisionBadge(c.decision)}</td>
+      <td>${flagCell(c.activeAppvl)}</td><td>${flagCell(c.cancelNote)}</td><td>${flagCell(c.urgent)}</td><td>${flagCell(c.qtyLimit)}</td>
+      <td>${c.loggedAt}</td>
+      <td><button class="small-x" onclick="deleteCase(${JSON.stringify(c.id)})">✕</button></td>`;
+    caseBody.appendChild(tr);
+  });
+  document.getElementById('caseEmpty').style.display = dayCases.length ? 'none' : 'block';
+
+  const totalHours = dayActivities.filter(a=>a.counted).reduce((s,a)=>s+a.hours,0);
+  const totalCases = dayCases.length;
+  document.getElementById('mCases').textContent = totalCases;
+  document.getElementById('mHours').textContent = fmt(totalHours);
+  document.getElementById('mRatio').textContent = totalHours>0 ? fmt(totalCases/totalHours) : '—';
+
+  updateGoalPanel(totalCases, totalHours);
+  updateModalGauge(totalCases, totalHours);
+  renderSummary();
+}
+
+// Half-donut gauge inside the Log Case popup — same target math as the
+// sidebar (production hours × 11.5 goal rate), just shown as a percentage.
+function updateModalGauge(totalCases, totalHours){
+  const target = totalHours > 0 ? totalHours * GOAL_RATE : 0;
+  const pct = target > 0 ? Math.min(100, (totalCases/target)*100) : 0;
+
+  const fill = document.getElementById('modalGaugeFill');
+  fill.style.strokeDashoffset = 100 - pct;
+  fill.classList.remove('good','mid');
+  if(pct >= 100) fill.classList.add('good');
+  else if(pct >= 60) fill.classList.add('mid');
+
+  document.getElementById('modalGaugePct').textContent = Math.round(pct) + '%';
+  document.getElementById('modalGaugeSub').textContent = totalHours > 0
+    ? `${totalCases} / ${Math.ceil(target)} cases`
+    : 'Enter production hours to see target';
+}
+
+// Target cases for the day = production hours × 11.5 (goal rate), rounded up
+// since you need to complete a whole case to count it. Progress bar tracks
+// cases logged against that target, which is the same thing as tracking
+// pace against the 11.5 cases/hr goal.
+function updateGoalPanel(totalCases, totalHours){
+  const target = totalHours > 0 ? totalHours * GOAL_RATE : 0;
+  const targetRounded = Math.ceil(target);
+
+  document.getElementById('goalHours').textContent = fmt(totalHours);
+  document.getElementById('goalTarget').textContent = totalHours > 0 ? targetRounded : '—';
+
+  const pace = totalHours > 0 ? totalCases/totalHours : 0;
+  const paceEl = document.getElementById('goalPace');
+  paceEl.textContent = totalHours > 0 ? fmt(pace) + ' cases/hr' : '—';
+  paceEl.style.color = totalHours > 0 ? (pace >= GOAL_RATE ? 'var(--green)' : 'var(--red)') : '';
+
+  const pct = target > 0 ? Math.min(100, (totalCases/target)*100) : 0;
+  const fill = document.getElementById('progressFill');
+  fill.style.width = pct + '%';
+  fill.classList.remove('good','mid','low');
+  fill.classList.add(pct >= 100 ? 'good' : pct >= 60 ? 'mid' : 'low');
+
+  const labelEl = document.getElementById('progressLabel');
+  labelEl.textContent = totalHours > 0
+    ? `${totalCases} / ${targetRounded} cases`
+    : 'Enter production hours to see today’s target';
+
+  const statusEl = document.getElementById('goalStatus');
+  statusEl.classList.remove('good','warn');
+  if(totalHours === 0){
+    statusEl.textContent = 'Log activities to calculate today’s case target.';
+  } else if(totalCases >= target){
+    statusEl.textContent = 'On pace — meeting the 11.5 cases/hr goal.';
+    statusEl.classList.add('good');
+  } else {
+    const remaining = Math.ceil(target - totalCases);
+    statusEl.textContent = `${remaining} more case${remaining===1?'':'s'} needed today to hit the 11.5/hr goal.`;
+    statusEl.classList.add('warn');
+  }
+}
+
+function renderSummary(){
+  const dates = Array.from(new Set([
+    ...data.activities.map(a=>a.date),
+    ...data.cases.map(c=>c.date)
+  ])).sort().reverse();
+
+  const body = document.getElementById('summaryRows');
+  body.innerHTML = '';
+  dates.forEach(d=>{
+    const acts = data.activities.filter(a=>a.date===d && a.counted);
+    const cases = data.cases.filter(c=>c.date===d);
+    const hours = acts.reduce((s,a)=>s+a.hours,0);
+    const pend = cases.filter(c=>c.decision==='Pend').length;
+    const deny = cases.filter(c=>c.decision==='Deny').length;
+    const approved = cases.filter(c=>c.decision==='Approved').length;
+    const ratio = hours>0 ? fmt(cases.length/hours) : '—';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d}</td><td>${cases.length}</td><td>${pend}</td><td>${deny}</td><td>${approved}</td><td>${fmt(hours)}</td><td>${ratio}</td>`;
+    body.appendChild(tr);
+  });
+  document.getElementById('summaryEmpty').style.display = dates.length ? 'none' : 'block';
+}
+
+function downloadCSV(filename, rows){
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportSummaryCSV(){
+  const rows = [['Date','Cases','Pend','Deny','Approved','ProductionHours','CasesPerHour']];
+  const dates = Array.from(new Set([
+    ...data.activities.map(a=>a.date),
+    ...data.cases.map(c=>c.date)
+  ])).sort();
+  dates.forEach(d=>{
+    const acts = data.activities.filter(a=>a.date===d && a.counted);
+    const cases = data.cases.filter(c=>c.date===d);
+    const hours = acts.reduce((s,a)=>s+a.hours,0);
+    const pend = cases.filter(c=>c.decision==='Pend').length;
+    const deny = cases.filter(c=>c.decision==='Deny').length;
+    const approved = cases.filter(c=>c.decision==='Approved').length;
+    const ratio = hours>0 ? (cases.length/hours).toFixed(2) : '';
+    rows.push([d, cases.length, pend, deny, approved, hours.toFixed(2), ratio]);
+  });
+  downloadCSV('case_tracker_summary.csv', rows);
+}
+
+function exportCaseLogCSV(){
+  const rows = [['Date','PACaseNumber','ProviderChecked','MemberChecked','DrugChecked','Decision','ActiveApprovalOnFile','CancellationNote','Urgent','QuantityLimitChecked','LoggedAt']];
+  data.cases.sort((a,b)=>a.date.localeCompare(b.date)).forEach(c=>{
+    rows.push([c.date, c.caseNumber, c.providerChecked||'', c.memberChecked||'', c.drugChecked||'', c.decision, c.activeAppvl||'', c.cancelNote||'', c.urgent||'', c.qtyLimit||'', c.loggedAt]);
+  });
+  downloadCSV('case_log.csv', rows);
+}
+
+function exportCaseLogCSVForDate(date){
+  const rows = [['Date','PACaseNumber','ProviderChecked','MemberChecked','DrugChecked','Decision','ActiveApprovalOnFile','CancellationNote','Urgent','QuantityLimitChecked','LoggedAt']];
+  data.cases.filter(c=>c.date===date).forEach(c=>{
+    rows.push([c.date, c.caseNumber, c.providerChecked||'', c.memberChecked||'', c.drugChecked||'', c.decision, c.activeAppvl||'', c.cancelNote||'', c.urgent||'', c.qtyLimit||'', c.loggedAt]);
+  });
+  downloadCSV(`case_log_${date}.csv`, rows);
+}
+
+/* ---------- EOD email ---------- */
+
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {yourName:'', tlName:''};
+}
+function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+
+(function initSettings(){
+  const s = loadSettings();
+  document.getElementById('yourName').value = s.yourName || '';
+  document.getElementById('tlName').value = s.tlName || '';
+})();
+
+function sendEODEmail(){
+  const yourName = document.getElementById('yourName').value.trim();
+  const tlName = document.getElementById('tlName').value.trim();
+  if(!yourName || !tlName){
+    alert('Enter your name and your TL\'s name first.');
+    return;
+  }
+  saveSettings({yourName, tlName});
+
+  const date = dateInput.value;
+  const dayActivitiesCounted = data.activities.filter(a=>a.date===date && a.counted);
+  const dayCases = data.cases.filter(c=>c.date===date);
+  const totalHours = dayActivitiesCounted.reduce((s,a)=>s+a.hours,0);
+  const totalCases = dayCases.length;
+  const ratio = totalHours > 0 ? (totalCases/totalHours).toFixed(2) : '0.00';
+
+  const dateFormatted = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+
+  const subject = `EOD Report (${dateFormatted}) - ${yourName}`;
+  const body =
+`Hi ${tlName},
+
+Please see my End of Day (EOD) report for today, ${dateFormatted}:
+
+Cases per Hour: ${ratio}
+Total Productive Hours: ${totalHours.toFixed(2)}
+
+Best regards,
+${yourName}`;
+
+  // Download today's case log first so it's ready to attach — browsers can't
+  // attach files to a mailto link programmatically.
+  if(dayCases.length){
+    exportCaseLogCSVForDate(date);
+  }
+
+  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  setTimeout(()=>{ window.location.href = mailto; }, 350);
+}
+
+renderAll();
+
+/* ---------- Screenshot OCR: paste/upload a schedule screenshot ---------- */
+
+function normalizeActivityName(raw){
+  return raw.toLowerCase().replace(/[^a-z0-9]/g,'');
+}
+const QUALIFYING_NORM = QUALIFYING.map(q=>({name:q, norm:normalizeActivityName(q)}));
+
+function levenshtein(a,b){
+  const m=a.length, n=b.length;
+  const dp = Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function matchQualifying(raw){
+  const norm = normalizeActivityName(raw);
+  if(!norm) return null;
+  let best=null, bestDist=Infinity;
+  QUALIFYING_NORM.forEach(q=>{
+    const dist = levenshtein(norm, q.norm);
+    if(dist<bestDist){ bestDist=dist; best=q.name; }
+  });
+  if(best && bestDist <= Math.max(2, Math.floor(best.length*0.25))) return best;
+  return null;
+}
+
+const TIME_RE = /(\d{1,2}:\d{2}\s*[AaPp]\.?[Mm]\.?)/g;
+
+function to24(timeStr){
+  const m = timeStr.trim().match(/(\d{1,2}):(\d{2})\s*([AaPp])/);
+  if(!m) return null;
+  let h = parseInt(m[1],10);
+  const min = m[2];
+  const ap = m[3].toUpperCase();
+  if(ap==='P' && h!==12) h+=12;
+  if(ap==='A' && h===12) h=0;
+  if(h<0||h>23) return null;
+  return String(h).padStart(2,'0')+':'+min;
+}
+
+function cleanNamePart(rawLine, times){
+  let namePart = rawLine;
+  times.forEach(t=>{ namePart = namePart.replace(t, ' '); });
+  namePart = namePart
+    .replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\b/gi,' ')
+    .replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/g,' ')
+    .replace(/[-–—]/g,' ')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+  return namePart.replace(/^\d+\s+/,'').trim();
+}
+
+// lines: array of {text, confidence} — either Tesseract's data.lines (word-grouped,
+// each with a real OCR confidence score) or a plain text.split('\n') fallback.
+// Using Tesseract's own line segmentation (rather than raw data.text) keeps each
+// table row intact so the "last two times on the line" always belong to THAT
+// activity's Start/End columns, not a neighboring row.
+function parseScheduleLines(lines){
+  const rows = [];
+  lines.forEach(line=>{
+    const text = (line.text||'').trim();
+    if(!text) return;
+    const times = text.match(TIME_RE);
+    if(!times || times.length<2) return;
+    const last2 = times.slice(-2);
+    const start = to24(last2[0]);
+    const end = to24(last2[1]);
+    if(!start || !end) return;
+
+    const namePart = cleanNamePart(text, times);
+    if(!namePart) return; // no activity name found, skip (likely a stray time-only line)
+
+    const matched = matchQualifying(namePart);
+    const confidence = typeof line.confidence === 'number' ? line.confidence : null;
+    rows.push({
+      activity: matched || namePart,
+      start, end,
+      counted: !!matched,
+      confidence
+    });
+  });
+  return rows;
+}
+
+let reviewData = [];
+let reviewShowAll = false;
+
+function escAttr(s){ return String(s).replace(/"/g,'&quot;'); }
+
+function renderReviewRows(){
+  const body = document.getElementById('reviewRows');
+  body.innerHTML = '';
+  const hiddenCount = reviewData.filter(r=>!r.counted).length;
+  let shown = 0;
+
+  reviewData.forEach((r, idx)=>{
+    if(!reviewShowAll && !r.counted) return; // hide non-qualifying rows by default
+    shown++;
+    const tr = document.createElement('tr');
+    const lowConf = typeof r.confidence === 'number' && r.confidence < 75;
+    if(lowConf) tr.style.background = '#fff4e5';
+    tr.innerHTML = `
+      <td>
+        <input type="text" value="${escAttr(r.activity)}" style="width:150px;" onchange="reviewData[${idx}].activity=this.value;">
+        ${lowConf ? `<div style="font-size:10px;color:#b06b00;margin-top:2px;">⚠ low OCR confidence (${Math.round(r.confidence)}%) — verify name &amp; times</div>` : ''}
+      </td>
+      <td><input type="time" value="${r.start}" onchange="reviewData[${idx}].start=this.value"></td>
+      <td><input type="time" value="${r.end}" onchange="reviewData[${idx}].end=this.value"></td>
+      <td style="text-align:center;"><input type="checkbox" ${r.counted?'checked':''} onchange="reviewData[${idx}].counted=this.checked"></td>
+      <td><button class="small-x" onclick="removeReviewRow(${idx})">✕</button></td>`;
+    body.appendChild(tr);
+  });
+
+  document.getElementById('reviewWrap').style.display = reviewData.length ? 'block' : 'none';
+
+  const toggleEl = document.getElementById('reviewToggle');
+  if(hiddenCount > 0){
+    toggleEl.style.display = 'inline-block';
+    toggleEl.textContent = reviewShowAll
+      ? `Hide ${hiddenCount} non-qualifying row${hiddenCount===1?'':'s'}`
+      : `${hiddenCount} non-qualifying row${hiddenCount===1?'':'s'} hidden — show all extracted rows`;
+  } else {
+    toggleEl.style.display = 'none';
+  }
+
+  document.getElementById('reviewNoneQualifying').style.display =
+    (!reviewShowAll && reviewData.length > 0 && shown === 0) ? 'block' : 'none';
+}
+
+function toggleReviewShowAll(){
+  reviewShowAll = !reviewShowAll;
+  renderReviewRows();
+}
+
+function removeReviewRow(idx){
+  reviewData.splice(idx,1);
+  renderReviewRows();
+}
+
+function commitReviewRows(){
+  const date = dateInput.value;
+  // Only commit rows currently visible (respects the show/hide non-qualifying
+  // filter) — hidden non-qualifying rows aren't silently added unreviewed.
+  const rowsToCommit = reviewShowAll ? reviewData : reviewData.filter(r=>r.counted);
+  rowsToCommit.forEach(r=>{
+    if(!r.start || !r.end) return;
+    data.activities.push({
+      id: Date.now()+Math.random(),
+      date,
+      activity: r.activity,
+      start: r.start, end: r.end,
+      hours: timeToDecimal(r.start, r.end),
+      counted: r.counted
+    });
+  });
+  saveData();
+  reviewData = [];
+  reviewShowAll = false;
+  renderReviewRows();
+  renderAll();
+}
+
+function cancelReview(){
+  reviewData = [];
+  reviewShowAll = false;
+  renderReviewRows();
+}
+
+function setOcrStatus(msg, show){
+  const el = document.getElementById('ocrStatus');
+  el.textContent = msg;
+  el.style.display = show ? 'block' : 'none';
+}
+
+// Upscale + grayscale + contrast-boost before OCR. Schedule screenshots are
+// usually small, and Tesseract misreads digits (e.g. "3" vs "2") far less
+// often on larger, higher-contrast text.
+function preprocessImage(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the image file.'));
+    reader.onload = function(e){
+      const img = new Image();
+      img.onerror = () => reject(new Error('Could not decode the image.'));
+      img.onload = function(){
+        const targetWidth = Math.max(img.width * 2, 1600);
+        const scale = targetWidth / img.width;
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        try{
+          const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+          const d = imgData.data;
+          for(let i=0;i<d.length;i+=4){
+            const gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+            let v = (gray - 128) * 1.25 + 128;
+            v = Math.max(0, Math.min(255, v));
+            d[i]=d[i+1]=d[i+2]=v;
+          }
+          ctx.putImageData(imgData, 0, 0);
+        }catch(err){ /* canvas tainted or unsupported — fall back to unfiltered upscale */ }
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function processImageFile(file){
+  if(!file) return;
+  setOcrStatus('Reading screenshot… this can take a few seconds (first use also downloads OCR language data).', true);
+  preprocessImage(file)
+    .then(dataUrl => Tesseract.recognize(dataUrl, 'eng'))
+    .then(({data})=>{
+      setOcrStatus('', false);
+      let rows = [];
+      if(data.lines && data.lines.length){
+        rows = parseScheduleLines(data.lines);
+      }
+      if(!rows.length && data.text){
+        rows = parseScheduleLines(data.text.split('\n').map(t=>({text:t, confidence:null})));
+      }
+      if(!rows.length){
+        alert('Could not detect activity rows in that image. Try a clearer/cropped screenshot, or add the row manually below.');
+        return;
+      }
+      reviewData = rows;
+      reviewShowAll = false;
+      renderReviewRows();
+    })
+    .catch(err=>{
+      setOcrStatus('', false);
+      alert('OCR failed: ' + err.message);
+    });
+}
+
+document.getElementById('imgFile').addEventListener('change', function(){
+  if(this.files && this.files[0]) processImageFile(this.files[0]);
+  this.value = '';
+});
+
+window.addEventListener('paste', function(e){
+  const items = (e.clipboardData || window.clipboardData) ? (e.clipboardData || window.clipboardData).items : null;
+  if(!items) return;
+  for(const item of items){
+    if(item.type && item.type.indexOf('image') !== -1){
+      processImageFile(item.getAsFile());
+      break;
+    }
+  }
+});
+
+const dropZoneEl = document.getElementById('dropZone');
+['dragover','dragenter'].forEach(evt=>{
+  dropZoneEl.addEventListener(evt, function(e){ e.preventDefault(); this.classList.add('drag'); });
+});
+['dragleave','drop'].forEach(evt=>{
+  dropZoneEl.addEventListener(evt, function(e){ e.preventDefault(); this.classList.remove('drag'); });
+});
+dropZoneEl.addEventListener('drop', function(e){
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if(file) processImageFile(file);
+});
+</script>
+</body>
+</html>
